@@ -346,9 +346,17 @@
 
                 newGameState.phase = 'day';
                 newGameState.dayMessage = 'Le village se réveille !';
-                newGameState.players.forEach(p => p.voyanteSeen = false);
+                newGameState.players.forEach(p => {
+                    p.voyanteSeen = false;
+                    p.hasActed = false;
+                });
 
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
+                try {
+                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                    console.log('✅ Jour commencé');
+                } catch (err) {
+                    console.error('❌ Erreur jour:', err);
+                }
             };
 
             const startVoting = async () => {
@@ -612,7 +620,7 @@
                                         <>
                                             <p className="text-purple-300 mb-3">Choisissez votre victime (pas un autre loup)</p>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {alivePlayers.filter(p => p.role !== 'loupGarou').map(player => (
+                                                {gameState.players.filter(p => p.isAlive && p.role !== 'loupGarou').map(player => (
                                                     <button key={player.id} onClick={() => nightAction(player.id, 'loup')} className="bg-red-600/20 hover:bg-red-600/30 border border-red-500 text-white px-4 py-3 rounded-xl">{player.name}</button>
                                                 ))}
                                             </div>
@@ -623,7 +631,7 @@
                                         <>
                                             <p className="text-purple-300 mb-3">Regardez UNE carte</p>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {alivePlayers.filter(p => p.id !== currentPlayer.id).map(player => (
+                                                {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id).map(player => (
                                                     <button key={player.id} onClick={() => nightAction(player.id, 'voyante')} className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500 text-white px-4 py-3 rounded-xl">{player.name}</button>
                                                 ))}
                                             </div>
@@ -634,7 +642,7 @@
                                         <>
                                             <p className="text-purple-300 mb-3">Bénissez une personne (pas la même qu'hier)</p>
                                             <div className="grid grid-cols-2 gap-3">
-                                                {alivePlayers.filter(p => p.id !== currentPlayer.id && p.id !== currentPlayer.lastBlessedId).map(player => (
+                                                {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id && p.id !== currentPlayer.lastBlessedId).map(player => (
                                                     <button key={player.id} onClick={() => nightAction(player.id, 'pretre')} className="bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500 text-white px-4 py-3 rounded-xl">{player.name}</button>
                                                 ))}
                                             </div>
@@ -643,22 +651,33 @@
 
                                     {currentPlayer.role === 'sorciere' && (
                                         <>
-                                            {sorciereNotif && <p className="text-yellow-300 mb-3">⚠️ Quelqu'un va mourir cette nuit !</p>}
-                                            <div className="space-y-3">
-                                                {!currentPlayer.sorciereHealUsed && (
-                                                    <button onClick={() => sorciereAction('heal')} className="w-full bg-green-600/20 hover:bg-green-600/30 border border-green-500 text-white px-4 py-3 rounded-xl">💚 Sauver la victime</button>
-                                                )}
-                                                {!currentPlayer.sorciereKillUsed && (
-                                                    <>
-                                                        <p className="text-purple-300">Tuer quelqu'un :</p>
-                                                        <div className="grid grid-cols-2 gap-3">
-                                                            {alivePlayers.filter(p => p.id !== currentPlayer.id).map(player => (
-                                                                <button key={player.id} onClick={() => sorciereAction('kill', player.id)} className="bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500 text-white px-4 py-3 rounded-xl">{player.name}</button>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
+                                            {gameState.nightActions?.loupVotes && (() => {
+                                                const votes = Object.values(gameState.nightActions.loupVotes);
+                                                const voteCounts = {};
+                                                votes.forEach(id => voteCounts[id] = (voteCounts[id] || 0) + 1);
+                                                const maxVotes = Math.max(...Object.values(voteCounts));
+                                                const candidates = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
+                                                const victimId = candidates[0];
+                                                const victim = gameState.players.find(p => p.id === victimId);
+                                                return victim ? (
+                                                    <div className="bg-red-900/30 border border-red-500 p-4 rounded-xl mb-3">
+                                                        <p className="text-yellow-300 font-bold mb-2">⚠️ Les loups ont choisi: {victim.name}</p>
+                                                        {!currentPlayer.sorciereHealUsed && (
+                                                            <button onClick={() => sorciereAction('heal')} className="w-full bg-green-600/20 hover:bg-green-600/30 border border-green-500 text-white px-4 py-3 rounded-xl mt-2">💚 Sauver {victim.name}</button>
+                                                        )}
+                                                    </div>
+                                                ) : null;
+                                            })()}
+                                            {!currentPlayer.sorciereKillUsed && (
+                                                <>
+                                                    <p className="text-purple-300 mb-3">Tuer quelqu'un :</p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id).map(player => (
+                                                            <button key={player.id} onClick={() => sorciereAction('kill', player.id)} className="bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500 text-white px-4 py-3 rounded-xl">{player.name}</button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
                                         </>
                                     )}
                                 </div>
