@@ -255,14 +255,44 @@
             };
 
             const startNight = async () => {
-                if (!db || !isHost) return;
-                const newGameState = { ...gameState };
+                console.log('🌙 startNight appelée');
+                console.log('🌙 isHost:', isHost);
+                console.log('🌙 gameState avant copie:', gameState);
+
+                if (!db || !isHost) {
+                    console.log('❌ Pas DB ou pas host');
+                    return;
+                }
+
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
+                console.log('🌙 newGameState copié:', newGameState);
+                console.log('🌙 newGameState.players:', newGameState.players);
+
                 newGameState.phase = 'night';
                 newGameState.nightActions = {};
                 newGameState.dayMessage = 'La nuit tombe... Chaque rôle agit en silence.';
-                newGameState.players.forEach(p => { p.hasActed = false; p.hasVoted = false; p.voyanteSeen = false; });
+
+                if (newGameState.players && Array.isArray(newGameState.players)) {
+                    newGameState.players.forEach(p => {
+                        p.hasActed = false;
+                        p.hasVoted = false;
+                        p.voyanteSeen = false;
+                    });
+                    console.log('✅ Players forEach réussi');
+                } else {
+                    console.error('❌ players n\'est pas un tableau:', newGameState.players);
+                }
+
                 setNightTimer(60);
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
+
+                console.log('🌙 Tentative set Firebase...');
+                try {
+                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                    console.log('✅ startNight Firebase success');
+                } catch (err) {
+                    console.error('❌ startNight Firebase error:', err);
+                }
             };
 
             const nightAction = async (targetId, actionType) => {
@@ -421,23 +451,32 @@
             };
 
             const endNight = async () => {
-                if (!db || !isHost) return;
-                const newGameState = { ...gameState };
+                console.log('🌅 endNight appelée');
+                if (!db || !isHost) {
+                    console.log('❌ Pas DB ou pas host');
+                    return;
+                }
+
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
+                console.log('🌅 newGameState copié:', newGameState);
 
                 let killedByWolves = null;
-                if (newGameState.nightActions.loupVotes) {
+                if (newGameState.nightActions && newGameState.nightActions.loupVotes) {
                     const votes = Object.values(newGameState.nightActions.loupVotes);
                     const voteCounts = {};
                     votes.forEach(id => voteCounts[id] = (voteCounts[id] || 0) + 1);
                     const maxVotes = Math.max(...Object.values(voteCounts));
                     const candidates = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
                     killedByWolves = candidates[Math.floor(Math.random() * candidates.length)];
+                    console.log('🐺 Victime des loups:', killedByWolves);
                 }
 
-                const savedByPriest = newGameState.nightActions.blessed === killedByWolves;
-                const savedByWitch = killedByWolves && newGameState.nightActions.sorciereHeal;
+                const savedByPriest = newGameState.nightActions && newGameState.nightActions.blessed === killedByWolves;
+                const savedByWitch = killedByWolves && newGameState.nightActions && newGameState.nightActions.sorciereHeal;
 
                 if (killedByWolves && (savedByWitch || savedByPriest)) {
+                    console.log('💚 Victime sauvée');
                     killedByWolves = null;
                 }
 
@@ -450,7 +489,7 @@
                     }
                 }
 
-                if (newGameState.nightActions.sorciereKill) {
+                if (newGameState.nightActions && newGameState.nightActions.sorciereKill) {
                     const victim = newGameState.players.find(p => p.id === newGameState.nightActions.sorciereKill);
                     if (victim) {
                         victim.isAlive = false;
@@ -458,12 +497,15 @@
                     }
                 }
 
-                if (!killedByWolves && !newGameState.nightActions.sorciereKill) {
+                if (!killedByWolves && (!newGameState.nightActions || !newGameState.nightActions.sorciereKill)) {
                     deathMessage = '✨ Personne n\'est mort cette nuit !';
                 }
 
                 const wolves = newGameState.players.filter(p => p.role === 'loupGarou' && p.isAlive);
                 const villagers = newGameState.players.filter(p => p.role !== 'loupGarou' && p.isAlive);
+
+                console.log('🐺 Loups vivants:', wolves.length);
+                console.log('👥 Villageois vivants:', villagers.length);
 
                 if (wolves.length === 0) {
                     alert('🎉 Les Villageois ont gagné ! Tous les loups sont morts.');
@@ -483,8 +525,10 @@
                     p.hasActed = false;
                 });
 
+                console.log('🌅 Passage au jour...');
                 try {
                     await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                    console.log('✅ endNight Firebase success');
                 } catch (err) {
                     console.error('❌ Erreur jour:', err);
                 }
@@ -492,7 +536,8 @@
 
             const startVoting = async () => {
                 if (!db || !isHost) return;
-                const newGameState = { ...gameState };
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
                 newGameState.phase = 'vote';
                 newGameState.votes = {};
                 newGameState.players.forEach(p => p.hasVoted = false);
@@ -502,7 +547,8 @@
 
             const vote = async (targetId) => {
                 if (!db) return;
-                const newGameState = { ...gameState };
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
                 const voter = newGameState.players.find(p => p.name === playerName);
                 if (!voter || !voter.isAlive || voter.hasVoted) return;
 
@@ -515,7 +561,8 @@
 
             const endVoting = async () => {
                 if (!db || !isHost) return;
-                const newGameState = { ...gameState };
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
 
                 const voteCounts = {};
                 Object.values(newGameState.votes || {}).forEach(id => {
@@ -548,7 +595,8 @@
 
             const tiebreakVote = async (playerId) => {
                 if (!db || !isHost) return;
-                const newGameState = { ...gameState };
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
                 const eliminated = newGameState.players.find(p => p.id === playerId);
                 if (eliminated) {
                     eliminated.isAlive = false;
@@ -564,7 +612,8 @@
 
             const chasseurShoot = async (targetId) => {
                 if (!db) return;
-                const newGameState = { ...gameState };
+                // Copie profonde de l'état du jeu
+                const newGameState = JSON.parse(JSON.stringify(gameState));
                 const target = newGameState.players.find(p => p.id === targetId);
                 if (target) target.isAlive = false;
                 checkVictoryAndContinue(newGameState);
