@@ -8,12 +8,13 @@
     <meta name="theme-color" content="#7c3aed">
     <meta name="description" content="Jeu du Loup-Garou multijoueur en temps réel">
     <link rel="manifest" href="./manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Loup-Garou">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
 
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
@@ -61,18 +62,10 @@
         .bg-pattern {
             background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE2YzAtMy4zMTQgMi42ODYtNiA2LTZzNi0yLjY4NiA2LTYtMi42ODYtNi02LTYtNiAyLjY4Ni02IDYgMi42ODYgNiA2IDZ6Ii8+PC9nPjwvZz48L3N2Zz4=');
         }
-
-        .night-bg {
-            background: linear-gradient(to bottom right, #0f172a, #1e1b4b, #0f172a);
-        }
-
-        .day-bg {
-            background: linear-gradient(to bottom right, #fef3c7, #fde68a, #fbbf24);
-        }
     </style>
 </head>
 
-<body class="min-h-screen">
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
     <div class="absolute inset-0 bg-pattern opacity-30"></div>
     <div id="app"></div>
 
@@ -83,6 +76,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // ===========================================
+        // FIREBASE CONFIGURATION
+        // ===========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDNRsFPDUDg5NzArWXxc6MQGYNTTAQdOxI",
             authDomain: "loupgarou2016.firebaseapp.com",
@@ -90,9 +86,11 @@
             projectId: "loupgarou2016",
             storageBucket: "loupgarou2016.firebasestorage.app",
             messagingSenderId: "124320980678",
-            appId: "1:124320980678:web:5c27d4568027efbf4841c7"
+            appId: "1:124320980678:web:5c27d4568027efbf4841c7",
+            measurementId: "G-LQXy3LE8K0"
         };
 
+        // Initialiser Firebase
         let db;
         try {
             firebase.initializeApp(firebaseConfig);
@@ -100,31 +98,100 @@
             console.log('✅ Firebase connecté');
         } catch (error) {
             console.error('❌ Erreur Firebase:', error);
+            alert('⚠️ Configuration Firebase requise. Voir les instructions dans le code.');
         }
 
-        const Moon = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>;
-        const Sun = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
-        const Users = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
-        const Crown = (props) => <svg className={props.className} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" /></svg>;
-        const Eye = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
-        const Droplet = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>;
-        const Target = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-        const Cross = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
-        const Skull = (props) => <svg className={props.className} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 16a1 1 0 01-1-1v-1h2v1a1 1 0 01-1 1z" clipRule="evenodd" /></svg>;
-        const AlertCircle = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-        const Copy = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>;
-        const Check = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
-        const LogOut = (props) => <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
+        // ===========================================
+        // ICONS COMPONENTS  
+        // ===========================================
+        const Moon = (props) => (
+            <svg className={props.className} style={props.style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        );
 
-        const roles = [
-            { id: 'loupGarou', name: 'Loup-Garou', icon: Moon, color: '#dc2626', description: 'Tue un villageois chaque nuit' },
-            { id: 'villageois', name: 'Villageois', icon: Users, color: '#10b981', description: 'Vote pendant la journée' },
-            { id: 'voyante', name: 'Voyante', icon: Eye, color: '#8b5cf6', description: 'Voit UNE carte par nuit' },
-            { id: 'sorciere', name: 'Sorcière', icon: Droplet, color: '#ec4899', description: 'Peut sauver OU tuer (1 fois chacun)' },
-            { id: 'chasseur', name: 'Chasseur', icon: Target, color: '#f59e0b', description: 'Tire sur quelqu\'un en mourant' },
-            { id: 'pretre', name: 'Prêtre', icon: Cross, color: '#06b6d4', description: 'Bénit une personne chaque nuit' }
-        ];
+        const Sun = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        );
 
+        const Users = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+        );
+
+        const Crown = (props) => (
+            <svg className={props.className} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+            </svg>
+        );
+
+        const Eye = (props) => (
+            <svg className={props.className} style={props.style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+        );
+
+        const Droplet = (props) => (
+            <svg className={props.className} style={props.style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+        );
+
+        const Target = (props) => (
+            <svg className={props.className} style={props.style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const Cross = (props) => (
+            <svg className={props.className} style={props.style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+        );
+
+        const Skull = (props) => (
+            <svg className={props.className} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 16a1 1 0 01-1-1v-1h2v1a1 1 0 01-1 1z" clipRule="evenodd" />
+            </svg>
+        );
+
+        const AlertCircle = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const Copy = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+        );
+
+        const Check = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+        );
+
+        const LogOut = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+        );
+
+        const Shield = (props) => (
+            <svg className={props.className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+        );
+
+        // ===========================================
+        // MAIN APP COMPONENT
+        // ===========================================
         const LoupGarou = () => {
             const [screen, setScreen] = useState('home');
             const [playerName, setPlayerName] = useState('');
@@ -135,89 +202,168 @@
             const [gameState, setGameState] = useState(null);
             const [copied, setCopied] = useState(false);
             const [error, setError] = useState('');
-            const [nightTimer, setNightTimer] = useState(60);
-            const [voteTimer, setVoteTimer] = useState(30);
+            const [discussionTime, setDiscussionTime] = useState(120);
             const roomRef = useRef(null);
-            const [sorciereNotification, setSorciereNotification] = useState(null);
 
             const [roleConfig, setRoleConfig] = useState({
-                loupGarou: 2, villageois: 2, voyante: 1, sorciere: 1, chasseur: 1, pretre: 0
+                loupGarou: 2,
+                villageois: 2,
+                voyante: 1,
+                sorciere: 1,
+                chasseur: 1,
+                pretre: 0
             });
 
+            const roles = [
+                { id: 'loupGarou', name: 'Loup-Garou', icon: Moon, color: '#dc2626', description: 'Tue un villageois chaque nuit' },
+                { id: 'villageois', name: 'Villageois', icon: Users, color: '#10b981', description: 'Simple villageois sans pouvoir' },
+                { id: 'voyante', name: 'Voyante', icon: Eye, color: '#8b5cf6', description: 'Découvre le rôle d\'un joueur' },
+                { id: 'sorciere', name: 'Sorcière', icon: Droplet, color: '#ec4899', description: 'Peut sauver ou tuer une fois' },
+                { id: 'chasseur', name: 'Chasseur', icon: Target, color: '#f59e0b', description: 'Tire sur quelqu\'un en mourant' },
+                { id: 'pretre', name: 'Prêtre', icon: Cross, color: '#06b6d4', description: 'Protège un joueur chaque nuit' }
+            ];
+
+            // Écouter les changements Firebase en temps réel
             useEffect(() => {
                 if (!roomCode || !db) return;
+
                 roomRef.current = db.ref(`rooms/${roomCode}`);
+
                 const listener = roomRef.current.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
                         setCurrentRoom(data);
                         setPlayers(data.players || []);
+
                         if (data.gameState) {
                             setGameState(data.gameState);
-                            if (data.status === 'playing' && screen !== 'game') setScreen('game');
+                            if (data.status === 'playing' && screen !== 'game') {
+                                setScreen('game');
+                            }
                         }
                     }
                 });
-                return () => { if (roomRef.current) roomRef.current.off('value', listener); };
+
+                return () => {
+                    if (roomRef.current) {
+                        roomRef.current.off('value', listener);
+                    }
+                };
             }, [roomCode]);
 
+            // Timer de discussion
             useEffect(() => {
-                if (gameState?.phase === 'night' && nightTimer > 0) {
-                    const timer = setTimeout(() => setNightTimer(nightTimer - 1), 1000);
+                if (gameState?.phase === 'discussion' && discussionTime > 0) {
+                    const timer = setTimeout(() => setDiscussionTime(discussionTime - 1), 1000);
                     return () => clearTimeout(timer);
-                } else if (gameState?.phase === 'night' && nightTimer === 0 && isHost) {
-                    endNight();
                 }
-            }, [gameState?.phase, nightTimer]);
-
-            useEffect(() => {
-                if (gameState?.phase === 'vote' && voteTimer > 0) {
-                    const timer = setTimeout(() => setVoteTimer(voteTimer - 1), 1000);
-                    return () => clearTimeout(timer);
-                } else if (gameState?.phase === 'vote' && voteTimer === 0 && isHost) {
-                    endVoting();
-                }
-            }, [gameState?.phase, voteTimer]);
+            }, [gameState?.phase, discussionTime]);
 
             const generateRoomCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
             const createRoom = async () => {
-                if (!playerName.trim()) { setError('Entrez votre nom'); return; }
-                if (!db) { setError('Firebase non configuré'); return; }
+                if (!playerName.trim()) {
+                    setError('Entrez votre nom');
+                    return;
+                }
+
+                if (!db) {
+                    setError('Firebase non configuré');
+                    return;
+                }
+
                 const code = generateRoomCode();
-                const room = { code, host: playerName, players: [{ name: playerName, id: Date.now().toString(), isAlive: true }], status: 'lobby', createdAt: Date.now() };
+                const room = {
+                    code,
+                    host: playerName,
+                    players: [{ name: playerName, id: Date.now().toString(), isAlive: true }],
+                    status: 'lobby',
+                    createdAt: Date.now()
+                };
+
                 try {
                     await db.ref(`rooms/${code}`).set(room);
-                    setRoomCode(code); setCurrentRoom(room); setIsHost(true); setPlayers(room.players); setScreen('lobby'); setError('');
-                } catch (err) { setError('Erreur: ' + err.message); }
+                    setRoomCode(code);
+                    setCurrentRoom(room);
+                    setIsHost(true);
+                    setPlayers(room.players);
+                    setScreen('lobby');
+                    setError('');
+                } catch (err) {
+                    setError('Erreur lors de la création: ' + err.message);
+                }
             };
 
             const joinRoom = async () => {
-                if (!playerName.trim() || !roomCode.trim()) { setError('Entrez votre nom et le code'); return; }
-                if (!db) { setError('Firebase non configuré'); return; }
+                if (!playerName.trim() || !roomCode.trim()) {
+                    setError('Entrez votre nom et le code');
+                    return;
+                }
+
+                if (roomCode.length !== 6) {
+                    setError('Le code doit contenir 6 chiffres');
+                    return;
+                }
+
+                if (!db) {
+                    setError('Firebase non configuré');
+                    return;
+                }
+
                 try {
                     const snapshot = await db.ref(`rooms/${roomCode}`).once('value');
                     const room = snapshot.val();
-                    if (!room) { setError('Salon introuvable'); return; }
-                    if (room.status !== 'lobby') { setError('❌ La partie a déjà commencé ! Impossible de rejoindre.'); return; }
-                    const nameExists = room.players.some(p => p.name === playerName);
-                    if (nameExists) { setError('❌ Ce nom est déjà pris !'); return; }
-                    room.players.push({ name: playerName, id: Date.now().toString(), isAlive: true });
+
+                    if (!room) {
+                        setError('Salon introuvable');
+                        return;
+                    }
+
+                    if (room.status !== 'lobby') {
+                        setError('La partie a déjà commencé');
+                        return;
+                    }
+
+                    const newPlayer = {
+                        name: playerName,
+                        id: Date.now().toString(),
+                        isAlive: true
+                    };
+
+                    room.players.push(newPlayer);
                     await db.ref(`rooms/${roomCode}`).set(room);
-                    setCurrentRoom(room); setPlayers(room.players); setIsHost(false); setScreen('lobby'); setError('');
-                } catch (err) { setError('Erreur: ' + err.message); }
+
+                    setCurrentRoom(room);
+                    setPlayers(room.players);
+                    setIsHost(false);
+                    setScreen('lobby');
+                    setError('');
+                } catch (err) {
+                    setError('Erreur: ' + err.message);
+                }
             };
 
             const leaveRoom = async () => {
                 if (isHost && db) {
-                    try { await db.ref(`rooms/${roomCode}`).remove(); } catch (err) { }
+                    try {
+                        await db.ref(`rooms/${roomCode}`).remove();
+                    } catch (err) {
+                        console.error('Erreur:', err);
+                    }
                 } else if (db && currentRoom) {
                     try {
                         const newPlayers = currentRoom.players.filter(p => p.name !== playerName);
                         await db.ref(`rooms/${roomCode}/players`).set(newPlayers);
-                    } catch (err) { }
+                    } catch (err) {
+                        console.error('Erreur:', err);
+                    }
                 }
-                setScreen('home'); setCurrentRoom(null); setRoomCode(''); setPlayers([]); setGameState(null);
+
+                setScreen('home');
+                setCurrentRoom(null);
+                setRoomCode('');
+                setPlayers([]);
+                setGameState(null);
             };
 
             const copyRoomCode = () => {
@@ -226,847 +372,552 @@
                 setTimeout(() => setCopied(false), 2000);
             };
 
+            const startGameSetup = () => {
+                const totalRoles = Object.values(roleConfig).reduce((a, b) => a + b, 0);
+                if (totalRoles !== players.length) {
+                    setError(`Configurez ${players.length} rôles (actuellement ${totalRoles})`);
+                    return;
+                }
+                setScreen('setup');
+                setError('');
+            };
+
             const startGame = async () => {
                 if (!db) return;
-                const totalRoles = Object.values(roleConfig).reduce((a, b) => a + b, 0);
-                if (totalRoles !== players.length) { setError(`Configurez ${players.length} rôles`); return; }
+
                 const deck = [];
                 Object.entries(roleConfig).forEach(([role, count]) => {
-                    for (let i = 0; i < count; i++) deck.push(role);
+                    for (let i = 0; i < count; i++) {
+                        deck.push(role);
+                    }
                 });
+
                 const shuffled = deck.sort(() => Math.random() - 0.5);
                 const playersWithRoles = players.map((player, index) => ({
                     ...player,
                     role: shuffled[index],
                     isAlive: true,
-                    hasVoted: false,
-                    hasActed: false,
-                    sorciereKillUsed: false,
-                    sorciereHealUsed: false,
-                    voyanteSeen: false,
-                    lastBlessedId: null
+                    votes: 0,
+                    votedFor: null
                 }));
-                const newGameState = { players: playersWithRoles, phase: 'sleep', round: 1, nightActions: {}, dayMessage: 'Le village s\'endort...' };
+
+                const newGameState = {
+                    players: playersWithRoles,
+                    phase: 'night',
+                    round: 1,
+                    nightAction: 'loups',
+                    killedTonight: null,
+                    protectedTonight: null
+                };
+
                 try {
-                    await db.ref(`rooms/${roomCode}`).update({ status: 'playing', gameState: newGameState });
-                    setGameState(newGameState); setScreen('game'); setError('');
-                    setTimeout(() => startNight(), 3000);
-                } catch (err) { setError('Erreur: ' + err.message); }
-            };
-
-            const startNight = async () => {
-                console.log('🌙 startNight appelée');
-                console.log('🌙 isHost:', isHost);
-                console.log('🌙 gameState avant copie:', gameState);
-
-                if (!db || !isHost) {
-                    console.log('❌ Pas DB ou pas host');
-                    return;
-                }
-
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                console.log('🌙 newGameState copié:', newGameState);
-                console.log('🌙 newGameState.players:', newGameState.players);
-
-                newGameState.phase = 'night';
-                newGameState.nightActions = {};
-                newGameState.dayMessage = 'La nuit tombe... Chaque rôle agit en silence.';
-
-                if (newGameState.players && Array.isArray(newGameState.players)) {
-                    newGameState.players.forEach(p => {
-                        p.hasActed = false;
-                        p.hasVoted = false;
-                        p.voyanteSeen = false;
+                    await db.ref(`rooms/${roomCode}`).update({
+                        status: 'playing',
+                        gameState: newGameState
                     });
-                    console.log('✅ Players forEach réussi');
+                    setGameState(newGameState);
+                    setScreen('game');
+                    setError('');
+                } catch (err) {
+                    setError('Erreur: ' + err.message);
+                }
+            };
+
+            const performNightAction = async (targetPlayerId) => {
+                if (!db) return;
+
+                const newGameState = { ...gameState };
+                const currentPlayer = newGameState.players.find(p => p.name === playerName);
+
+                if (gameState.nightAction === 'loups' && currentPlayer?.role === 'loupGarou') {
+                    newGameState.killedTonight = targetPlayerId;
+                } else if (gameState.nightAction === 'voyante' && currentPlayer?.role === 'voyante') {
+                    const target = newGameState.players.find(p => p.id === targetPlayerId);
+                    alert(`${target.name} est ${roles.find(r => r.id === target.role)?.name}`);
+                } else if (gameState.nightAction === 'pretre' && currentPlayer?.role === 'pretre') {
+                    newGameState.protectedTonight = targetPlayerId;
+                }
+
+                try {
+                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                } catch (err) {
+                    console.error('Erreur:', err);
+                }
+            };
+
+            const advanceNightPhase = async () => {
+                if (!db) return;
+
+                const newGameState = { ...gameState };
+                const nightOrder = ['loups', 'voyante', 'sorciere', 'pretre'];
+                const currentIndex = nightOrder.indexOf(gameState.nightAction);
+
+                if (currentIndex < nightOrder.length - 1) {
+                    newGameState.nightAction = nightOrder[currentIndex + 1];
                 } else {
-                    console.error('❌ players n\'est pas un tableau:', newGameState.players);
+                    const killed = newGameState.killedTonight;
+                    const protectedPlayer = newGameState.protectedTonight;
+
+                    if (killed && killed !== protectedPlayer) {
+                        const player = newGameState.players.find(p => p.id === killed);
+                        if (player) player.isAlive = false;
+                    }
+
+                    newGameState.phase = 'discussion';
+                    newGameState.nightAction = null;
+                    newGameState.killedTonight = null;
+                    newGameState.protectedTonight = null;
+                    setDiscussionTime(120);
                 }
-
-                setNightTimer(60);
-
-                console.log('🌙 Tentative set Firebase...');
-                try {
-                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
-                    console.log('✅ startNight Firebase success');
-                } catch (err) {
-                    console.error('❌ startNight Firebase error:', err);
-                }
-            };
-
-            const nightAction = async (targetId, actionType) => {
-                console.log('🔥 nightAction appelée - Target:', targetId, 'Type:', actionType);
-                console.log('🔥 playerName:', playerName);
-                console.log('🔥 roomCode:', roomCode);
-                console.log('🔥 gameState:', gameState);
-
-                if (!db) {
-                    console.error('❌ DB non disponible');
-                    return;
-                }
-
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                console.log('🔥 newGameState copié:', newGameState);
-
-                const currentPlayer = newGameState.players.find(p => p.name === playerName);
-                console.log('🔥 currentPlayer trouvé:', currentPlayer);
-
-                if (!currentPlayer || !currentPlayer.isAlive) {
-                    console.error('❌ Joueur non trouvé ou mort');
-                    return;
-                }
-
-                if (actionType === 'loup') {
-                    console.log('🐺 Action loup');
-                    if (currentPlayer.role !== 'loupGarou') {
-                        console.error('❌ Pas un loup-garou, rôle:', currentPlayer.role);
-                        return;
-                    }
-                    const target = newGameState.players.find(p => p.id === targetId);
-                    console.log('🐺 Target trouvée:', target);
-                    if (target && target.role === 'loupGarou') {
-                        console.log('❌ Target est un loup');
-                        alert('❌ Vous ne pouvez pas tuer un autre loup !');
-                        return;
-                    }
-                    if (!newGameState.nightActions) newGameState.nightActions = {};
-                    if (!newGameState.nightActions.loupVotes) newGameState.nightActions.loupVotes = {};
-                    newGameState.nightActions.loupVotes[currentPlayer.id] = targetId;
-                    currentPlayer.hasActed = true;
-                    console.log('✅ Vote loup enregistré dans state');
-                    alert('✅ Votre vote a été enregistré !');
-                } else if (actionType === 'voyante') {
-                    console.log('🔮 Action voyante');
-                    if (currentPlayer.role !== 'voyante') {
-                        console.error('❌ Pas une voyante, rôle:', currentPlayer.role);
-                        return;
-                    }
-                    if (currentPlayer.voyanteSeen) {
-                        console.log('❌ Voyante a déjà vu');
-                        return;
-                    }
-                    const target = newGameState.players.find(p => p.id === targetId);
-                    console.log('🔮 Target trouvée:', target);
-                    if (target) {
-                        alert(`🔮 ${target.name} est ${roles.find(r => r.id === target.role)?.name}`);
-                        currentPlayer.voyanteSeen = true;
-                        currentPlayer.hasActed = true;
-                        console.log('✅ Vision enregistrée dans state');
-                    }
-                } else if (actionType === 'pretre') {
-                    console.log('✝️ Action prêtre');
-                    if (currentPlayer.role !== 'pretre') {
-                        console.error('❌ Pas un prêtre, rôle:', currentPlayer.role);
-                        return;
-                    }
-                    if (currentPlayer.lastBlessedId === targetId) {
-                        console.log('❌ Même personne que la nuit dernière');
-                        alert('❌ Vous ne pouvez pas bénir la même personne deux nuits de suite !');
-                        return;
-                    }
-                    if (!newGameState.nightActions) newGameState.nightActions = {};
-                    newGameState.nightActions.blessed = targetId;
-                    currentPlayer.lastBlessedId = targetId;
-                    currentPlayer.hasActed = true;
-                    console.log('✅ Bénédiction enregistrée dans state');
-                    alert('✅ Bénédiction accordée !');
-                }
-
-                console.log('🔥 Tentative d\'enregistrement Firebase...');
-                console.log('🔥 newGameState avant envoi:', JSON.stringify(newGameState, null, 2));
 
                 try {
                     await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
-                    console.log('✅✅✅ Action enregistrée dans Firebase:', actionType);
                 } catch (err) {
-                    console.error('❌❌❌ Erreur Firebase:', err);
-                    alert('❌ Erreur lors de l\'enregistrement !');
-                }
-            };
-
-            const sorciereAction = async (actionType, targetId = null) => {
-                console.log('🧙 sorciereAction appelée - Type:', actionType, 'Target:', targetId);
-
-                if (!db) {
-                    console.error('❌ DB non disponible');
-                    return;
-                }
-
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                console.log('🧙 newGameState copié:', newGameState);
-
-                const currentPlayer = newGameState.players.find(p => p.name === playerName);
-                console.log('🧙 currentPlayer:', currentPlayer);
-
-                if (currentPlayer.role !== 'sorciere' || !currentPlayer.isAlive) {
-                    console.error('❌ Pas une sorcière ou morte');
-                    return;
-                }
-
-                if (actionType === 'heal') {
-                    console.log('💚 Tentative de sauver');
-                    if (currentPlayer.sorciereHealUsed) {
-                        console.log('❌ Potion déjà utilisée');
-                        alert('❌ Vous avez déjà utilisé votre potion de vie !');
-                        return;
-                    }
-                    if (!newGameState.nightActions) newGameState.nightActions = {};
-                    newGameState.nightActions.sorciereHeal = true;
-                    currentPlayer.sorciereHealUsed = true;
-                    currentPlayer.hasActed = true;
-                    console.log('✅ Heal enregistré dans state');
-                    alert('✅ Potion de vie utilisée ! La victime sera sauvée.');
-                } else if (actionType === 'kill') {
-                    console.log('☠️ Tentative d\'empoisonner');
-                    if (currentPlayer.sorciereKillUsed) {
-                        console.log('❌ Potion déjà utilisée');
-                        alert('❌ Vous avez déjà utilisé votre potion de mort !');
-                        return;
-                    }
-                    if (!newGameState.nightActions) newGameState.nightActions = {};
-                    newGameState.nightActions.sorciereKill = targetId;
-                    currentPlayer.sorciereKillUsed = true;
-                    currentPlayer.hasActed = true;
-                    console.log('✅ Kill enregistré dans state, target:', targetId);
-                    alert('✅ Potion de mort utilisée !');
-                } else if (actionType === 'pass') {
-                    console.log('⏭️ Pass');
-                    currentPlayer.hasActed = true;
-                    alert('✅ Vous passez votre tour.');
-                }
-
-                console.log('🔥 Tentative d\'enregistrement Firebase sorcière...');
-                console.log('🔥 newGameState avant envoi:', JSON.stringify(newGameState, null, 2));
-
-                try {
-                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
-                    console.log('✅✅✅ Action sorcière enregistrée:', actionType);
-                } catch (err) {
-                    console.error('❌❌❌ Erreur Firebase sorcière:', err);
-                    alert('❌ Erreur lors de l\'enregistrement !');
-                }
-            };
-
-            const endNight = async () => {
-                console.log('🌅 endNight appelée');
-                if (!db || !isHost) {
-                    console.log('❌ Pas DB ou pas host');
-                    return;
-                }
-
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                console.log('🌅 newGameState copié:', newGameState);
-
-                let killedByWolves = null;
-                if (newGameState.nightActions && newGameState.nightActions.loupVotes) {
-                    const votes = Object.values(newGameState.nightActions.loupVotes);
-                    const voteCounts = {};
-                    votes.forEach(id => voteCounts[id] = (voteCounts[id] || 0) + 1);
-                    const maxVotes = Math.max(...Object.values(voteCounts));
-                    const candidates = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
-                    killedByWolves = candidates[Math.floor(Math.random() * candidates.length)];
-                    console.log('🐺 Victime des loups:', killedByWolves);
-                }
-
-                const savedByPriest = newGameState.nightActions && newGameState.nightActions.blessed === killedByWolves;
-                const savedByWitch = killedByWolves && newGameState.nightActions && newGameState.nightActions.sorciereHeal;
-
-                if (killedByWolves && (savedByWitch || savedByPriest)) {
-                    console.log('💚 Victime sauvée');
-                    killedByWolves = null;
-                }
-
-                let deathMessage = '';
-                if (killedByWolves) {
-                    const victim = newGameState.players.find(p => p.id === killedByWolves);
-                    if (victim) {
-                        victim.isAlive = false;
-                        deathMessage = `☠️ ${victim.name} a été dévoré par les loups-garous ! `;
-                    }
-                }
-
-                if (newGameState.nightActions && newGameState.nightActions.sorciereKill) {
-                    const victim = newGameState.players.find(p => p.id === newGameState.nightActions.sorciereKill);
-                    if (victim) {
-                        victim.isAlive = false;
-                        deathMessage += `☠️ ${victim.name} a été empoisonné par la sorcière ! `;
-                    }
-                }
-
-                if (!killedByWolves && (!newGameState.nightActions || !newGameState.nightActions.sorciereKill)) {
-                    deathMessage = '✨ Personne n\'est mort cette nuit !';
-                }
-
-                const wolves = newGameState.players.filter(p => p.role === 'loupGarou' && p.isAlive);
-                const villagers = newGameState.players.filter(p => p.role !== 'loupGarou' && p.isAlive);
-
-                console.log('🐺 Loups vivants:', wolves.length);
-                console.log('👥 Villageois vivants:', villagers.length);
-
-                if (wolves.length === 0) {
-                    alert('🎉 Les Villageois ont gagné ! Tous les loups sont morts.');
-                    await leaveRoom();
-                    return;
-                }
-                if (wolves.length >= villagers.length) {
-                    alert('🐺 Les Loups-Garous ont gagné ! Ils sont majoritaires.');
-                    await leaveRoom();
-                    return;
-                }
-
-                newGameState.phase = 'day';
-                newGameState.dayMessage = deathMessage;
-                newGameState.players.forEach(p => {
-                    p.voyanteSeen = false;
-                    p.hasActed = false;
-                });
-
-                console.log('🌅 Passage au jour...');
-                try {
-                    await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
-                    console.log('✅ endNight Firebase success');
-                } catch (err) {
-                    console.error('❌ Erreur jour:', err);
+                    console.error('Erreur:', err);
                 }
             };
 
             const startVoting = async () => {
-                if (!db || !isHost) return;
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
+                if (!db) return;
+
+                const newGameState = { ...gameState };
                 newGameState.phase = 'vote';
-                newGameState.votes = {};
-                newGameState.players.forEach(p => p.hasVoted = false);
-                setVoteTimer(30);
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
-            };
-
-            const vote = async (targetId) => {
-                if (!db) return;
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                const voter = newGameState.players.find(p => p.name === playerName);
-                if (!voter || !voter.isAlive || voter.hasVoted) return;
-
-                if (!newGameState.votes) newGameState.votes = {};
-                newGameState.votes[voter.id] = targetId;
-                voter.hasVoted = true;
-
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
-            };
-
-            const endVoting = async () => {
-                if (!db || !isHost) return;
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-
-                const voteCounts = {};
-                Object.values(newGameState.votes || {}).forEach(id => {
-                    voteCounts[id] = (voteCounts[id] || 0) + 1;
+                newGameState.players.forEach(p => {
+                    p.votes = 0;
+                    p.votedFor = null;
                 });
-
-                const maxVotes = Math.max(...Object.values(voteCounts));
-                const tiedPlayers = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
-
-                if (tiedPlayers.length > 1) {
-                    newGameState.phase = 'tiebreak';
-                    newGameState.tiedPlayers = tiedPlayers;
-                } else if (tiedPlayers.length === 1) {
-                    const eliminated = newGameState.players.find(p => p.id === tiedPlayers[0]);
-                    if (eliminated) {
-                        eliminated.isAlive = false;
-                        if (eliminated.role === 'chasseur') {
-                            newGameState.phase = 'chasseur';
-                            newGameState.chasseurId = eliminated.id;
-                        } else {
-                            checkVictoryAndContinue(newGameState);
-                        }
-                    }
-                } else {
-                    checkVictoryAndContinue(newGameState);
-                }
-
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
-            };
-
-            const tiebreakVote = async (playerId) => {
-                if (!db || !isHost) return;
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                const eliminated = newGameState.players.find(p => p.id === playerId);
-                if (eliminated) {
-                    eliminated.isAlive = false;
-                    if (eliminated.role === 'chasseur') {
-                        newGameState.phase = 'chasseur';
-                        newGameState.chasseurId = eliminated.id;
-                    } else {
-                        checkVictoryAndContinue(newGameState);
-                    }
-                }
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
-            };
-
-            const chasseurShoot = async (targetId) => {
-                if (!db) return;
-                // Copie profonde de l'état du jeu
-                const newGameState = JSON.parse(JSON.stringify(gameState));
-                const target = newGameState.players.find(p => p.id === targetId);
-                if (target) target.isAlive = false;
-                checkVictoryAndContinue(newGameState);
-                try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
-            };
-
-            const checkVictoryAndContinue = async (newGameState) => {
-                const wolves = newGameState.players.filter(p => p.role === 'loupGarou' && p.isAlive);
-                const villagers = newGameState.players.filter(p => p.role !== 'loupGarou' && p.isAlive);
-
-                if (wolves.length === 0) {
-                    alert('🎉 Les Villageois ont gagné ! Tous les loups sont morts.');
-                    await leaveRoom();
-                    return;
-                }
-                if (wolves.length >= villagers.length) {
-                    alert('🐺 Les Loups-Garous ont gagné ! Ils sont majoritaires.');
-                    await leaveRoom();
-                    return;
-                }
-
-                newGameState.phase = 'sleep';
-                newGameState.dayMessage = 'Le village s\'endort...';
-                newGameState.round += 1;
 
                 try {
                     await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
-                    setTimeout(() => startNight(), 3000);
-                } catch (err) { }
+                } catch (err) {
+                    console.error('Erreur:', err);
+                }
             };
 
+            const vote = async (targetPlayerId) => {
+                if (!db) return;
+
+                const newGameState = { ...gameState };
+                const voter = newGameState.players.find(p => p.name === playerName);
+
+                if (voter && voter.isAlive && !voter.votedFor) {
+                    voter.votedFor = targetPlayerId;
+                    const target = newGameState.players.find(p => p.id === targetPlayerId);
+                    if (target) target.votes = (target.votes || 0) + 1;
+
+                    try {
+                        await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                    } catch (err) {
+                        console.error('Erreur:', err);
+                    }
+                }
+            };
+
+            const endVoting = async () => {
+                if (!db) return;
+
+                const newGameState = { ...gameState };
+                const alivePlayers = newGameState.players.filter(p => p.isAlive);
+                const maxVotes = Math.max(...alivePlayers.map(p => p.votes || 0));
+                const eliminated = alivePlayers.find(p => p.votes === maxVotes);
+
+                if (eliminated) {
+                    eliminated.isAlive = false;
+                    if (eliminated.role === 'chasseur') {
+                        alert(`${eliminated.name} était le Chasseur ! Il peut tirer sur quelqu'un.`);
+                    }
+                }
+
+                setTimeout(async () => {
+                    const wolves = newGameState.players.filter(p => p.role === 'loupGarou' && p.isAlive);
+                    const villagers = newGameState.players.filter(p => p.role !== 'loupGarou' && p.isAlive);
+
+                    if (wolves.length === 0) {
+                        alert('Les Villageois ont gagné ! 🎉');
+                        await leaveRoom();
+                        return;
+                    }
+
+                    if (wolves.length >= villagers.length) {
+                        alert('Les Loups-Garous ont gagné ! 🐺');
+                        await leaveRoom();
+                        return;
+                    }
+
+                    newGameState.phase = 'night';
+                    newGameState.nightAction = 'loups';
+                    newGameState.round += 1;
+
+                    try {
+                        await db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+                    } catch (err) {
+                        console.error('Erreur:', err);
+                    }
+                }, 3000);
+            };
+
+            // ===========================================
+            // RENDERS
+            // ===========================================
+
+            // ÉCRAN D'ACCUEIL
             if (screen === 'home') {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-4 relative z-10 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-                        <div className="max-w-md w-full">
-                            <div className="text-center mb-12 animate-fade-in">
-                                <div className="flex justify-center mb-6"><Moon className="w-20 h-20 text-red-500 pulse-glow" /></div>
-                                <h1 className="text-6xl font-black text-white mb-3 cinzel">LOUP-GAROU</h1>
-                                <p className="text-purple-300 text-lg">Le village s'éveille...</p>
-                            </div>
-                            <div className="bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30">
-                                <input type="text" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 mb-4 focus:outline-none" placeholder="Entrez votre nom" />
-                                <button onClick={createRoom} className="w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold mb-3 hover:from-red-500 hover:to-purple-500">
-                                    <Crown className="w-6 h-6 inline mr-3" />Créer un Salon
-                                </button>
-                                <button onClick={() => setScreen('join')} className="w-full bg-white/10 text-white py-4 px-6 rounded-2xl font-bold hover:bg-white/20">
-                                    <Users className="w-6 h-6 inline mr-3" />Rejoindre un Salon
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                return React.createElement('div', {
+                    className: 'min-h-screen flex items-center justify-center p-4 relative z-10'
+                },
+                    React.createElement('div', { className: 'max-w-md w-full' },
+                        React.createElement('div', { className: 'text-center mb-12 animate-fade-in' },
+                            React.createElement('div', { className: 'flex justify-center mb-6' },
+                                React.createElement('div', { className: 'relative' },
+                                    React.createElement(Moon, { className: 'w-20 h-20 text-red-500 pulse-glow' }),
+                                    React.createElement('div', { className: 'absolute inset-0 bg-red-500 blur-2xl opacity-50 pulse-glow' })
+                                )
+                            ),
+                            React.createElement('h1', {
+                                className: 'text-6xl font-black text-white mb-3 tracking-tight cinzel'
+                            }, 'LOUP-GAROU'),
+                            React.createElement('p', { className: 'text-purple-300 text-lg' }, 'Le village s\'éveille...'),
+                            React.createElement('p', { className: 'text-purple-400 text-sm mt-2' }, '🔥 Multijoueur en temps réel')
+                        ),
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30 shadow-2xl' },
+                            React.createElement('div', { className: 'space-y-4 mb-4' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    value: playerName,
+                                    onChange: (e) => setPlayerName(e.target.value),
+                                    className: 'w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20',
+                                    placeholder: 'Entrez votre nom'
+                                })
+                            ),
+                            React.createElement('div', { className: 'space-y-4' },
+                                React.createElement('button', {
+                                    onClick: createRoom,
+                                    className: 'w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-red-500 hover:to-purple-500 transition-all transform hover:scale-105 shadow-lg'
+                                },
+                                    React.createElement(Crown, { className: 'w-6 h-6 inline mr-3' }),
+                                    'Créer un Salon'
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => setScreen('join'),
+                                    className: 'w-full bg-white/10 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all border border-white/20'
+                                },
+                                    React.createElement(Users, { className: 'w-6 h-6 inline mr-3' }),
+                                    'Rejoindre un Salon'
+                                )
+                            ),
+                            React.createElement('div', { className: 'mt-8 pt-6 border-t border-white/10 text-center text-sm text-purple-300' },
+                                React.createElement('p', null, 'Minimum 4 joueurs requis')
+                            )
+                        )
+                    )
                 );
             }
 
+            // ÉCRAN REJOINDRE
             if (screen === 'join') {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-4 relative z-10 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-                        <div className="max-w-md w-full">
-                            <button onClick={() => setScreen('home')} className="text-purple-300 mb-6 hover:text-white">← Retour</button>
-                            <div className="bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30">
-                                <h2 className="text-3xl font-bold text-white mb-6 cinzel">Rejoindre</h2>
-                                <input type="text" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 mb-4 focus:outline-none" placeholder="Votre nom" />
-                                <input type="text" value={roomCode} onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, '').slice(0, 6))} className="w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 mb-4 text-2xl text-center tracking-widest font-bold focus:outline-none" placeholder="000000" maxLength={6} />
-                                {error && <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-xl mb-4">{error}</div>}
-                                <button onClick={joinRoom} className="w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 rounded-2xl font-bold">Rejoindre</button>
-                            </div>
-                        </div>
-                    </div>
+                return React.createElement('div', { className: 'min-h-screen flex items-center justify-center p-4 relative z-10' },
+                    React.createElement('div', { className: 'max-w-md w-full' },
+                        React.createElement('button', {
+                            onClick: () => setScreen('home'),
+                            className: 'text-purple-300 mb-6 hover:text-white transition-colors'
+                        }, '← Retour'),
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30' },
+                            React.createElement('h2', { className: 'text-3xl font-bold text-white mb-6 cinzel' }, 'Rejoindre un Salon'),
+                            React.createElement('div', { className: 'space-y-4' },
+                                React.createElement('div', null,
+                                    React.createElement('label', { className: 'block text-purple-300 mb-2 text-sm' }, 'Votre nom'),
+                                    React.createElement('input', {
+                                        type: 'text',
+                                        value: playerName,
+                                        onChange: (e) => setPlayerName(e.target.value),
+                                        className: 'w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20',
+                                        placeholder: 'Entrez votre nom'
+                                    })
+                                ),
+                                React.createElement('div', null,
+                                    React.createElement('label', { className: 'block text-purple-300 mb-2 text-sm' }, 'Code du salon (6 chiffres)'),
+                                    React.createElement('input', {
+                                        type: 'text',
+                                        value: roomCode,
+                                        onChange: (e) => setRoomCode(e.target.value.replace(/\D/g, '').slice(0, 6)),
+                                        className: 'w-full bg-white/10 text-white border border-purple-500/30 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 text-2xl tracking-widest text-center font-bold',
+                                        placeholder: '000000',
+                                        maxLength: 6
+                                    })
+                                ),
+                                error && React.createElement('div', { className: 'bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-xl flex items-center' },
+                                    React.createElement(AlertCircle, { className: 'w-5 h-5 mr-2' }),
+                                    error
+                                ),
+                                React.createElement('button', {
+                                    onClick: joinRoom,
+                                    className: 'w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold hover:from-red-500 hover:to-purple-500 transition-all'
+                                }, 'Rejoindre')
+                            )
+                        )
+                    )
                 );
             }
 
+            // ÉCRAN LOBBY
             if (screen === 'lobby') {
-                return (
-                    <div className="min-h-screen p-4 relative z-10 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-                        <div className="max-w-4xl mx-auto py-8">
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-3xl font-bold text-white cinzel">Salon d'Attente</h2>
-                                <button onClick={leaveRoom} className="text-red-400 hover:text-red-300"><LogOut className="w-5 h-5" /></button>
-                            </div>
-                            <div className="bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30 mb-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div>
-                                        <p className="text-purple-300 text-sm">Code du salon</p>
-                                        <p className="text-4xl font-bold text-white tracking-wider">{roomCode}</p>
-                                    </div>
-                                    <button onClick={copyRoomCode} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-bold">
-                                        {copied ? <><Check className="w-5 h-5 inline mr-2" />Copié !</> : <><Copy className="w-5 h-5 inline mr-2" />Copier</>}
-                                    </button>
-                                </div>
-                                <div className="border-t border-white/10 pt-6">
-                                    <p className="text-purple-300 mb-4">Joueurs: {players.length} {players.length < 4 ? '(min 4)' : ''}</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {players.map((player) => (
-                                            <div key={player.id} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center">
-                                                {player.name === currentRoom?.host && <Crown className="w-5 h-5 text-yellow-400 mr-2" />}
-                                                <span className="text-white">{player.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            {isHost && (
-                                <div className="bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30">
-                                    <h3 className="text-2xl font-bold text-white mb-6">Configuration</h3>
-                                    <div className="grid gap-4 mb-6">
-                                        {roles.map(role => (
-                                            <div key={role.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
-                                                <div className="flex items-center">
-                                                    <role.icon className="w-6 h-6 mr-3" style={{ color: role.color }} />
-                                                    <div>
-                                                        <p className="text-white font-bold">{role.name}</p>
-                                                        <p className="text-purple-300 text-sm">{role.description}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <button onClick={() => setRoleConfig({ ...roleConfig, [role.id]: Math.max(0, roleConfig[role.id] - 1) })} className="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-lg font-bold">-</button>
-                                                    <span className="text-white font-bold w-8 text-center">{roleConfig[role.id]}</span>
-                                                    <button onClick={() => setRoleConfig({ ...roleConfig, [role.id]: roleConfig[role.id] + 1 })} className="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-lg font-bold">+</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {error && <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-xl mb-4">{error}</div>}
-                                    <button onClick={startGame} disabled={players.length < 4} className="w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 rounded-2xl font-bold disabled:opacity-50">
-                                        {players.length < 4 ? `En attente (${players.length}/4)` : 'Lancer la Partie'}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                return React.createElement('div', { className: 'min-h-screen p-4 relative z-10' },
+                    React.createElement('div', { className: 'max-w-4xl mx-auto py-8' },
+                        React.createElement('div', { className: 'flex justify-between items-center mb-8' },
+                            React.createElement('h2', { className: 'text-3xl font-bold text-white cinzel' }, 'Salon d\'Attente'),
+                            React.createElement('button', {
+                                onClick: leaveRoom,
+                                className: 'text-red-400 hover:text-red-300 transition-colors flex items-center'
+                            },
+                                React.createElement(LogOut, { className: 'w-5 h-5 mr-2' }),
+                                'Quitter'
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+                                React.createElement('div', null,
+                                    React.createElement('p', { className: 'text-purple-300 text-sm mb-1' }, 'Code du salon'),
+                                    React.createElement('p', { className: 'text-4xl font-bold text-white tracking-wider' }, roomCode)
+                                ),
+                                React.createElement('button', {
+                                    onClick: copyRoomCode,
+                                    className: 'bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center'
+                                },
+                                    copied ? React.createElement(Check, { className: 'w-5 h-5 mr-2' }) : React.createElement(Copy, { className: 'w-5 h-5 mr-2' }),
+                                    copied ? 'Copié !' : 'Copier'
+                                )
+                            ),
+                            React.createElement('div', { className: 'border-t border-white/10 pt-6' },
+                                React.createElement('p', { className: 'text-purple-300 mb-4' },
+                                    `Joueurs connectés : ${players.length} ${players.length < 4 ? '(minimum 4 requis)' : ''}`
+                                ),
+                                React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                                    players.map((player) =>
+                                        React.createElement('div', {
+                                            key: player.id,
+                                            className: 'bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center'
+                                        },
+                                            player.name === currentRoom?.host && React.createElement(Crown, { className: 'w-5 h-5 text-yellow-400 mr-2' }),
+                                            React.createElement('span', { className: 'text-white font-medium' }, player.name)
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        isHost && React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30' },
+                            React.createElement('h3', { className: 'text-2xl font-bold text-white mb-6' }, 'Configuration des Rôles'),
+                            React.createElement('div', { className: 'grid gap-4 mb-6' },
+                                roles.map(role =>
+                                    React.createElement('div', {
+                                        key: role.id,
+                                        className: 'bg-white/5 border border-white/10 rounded-xl p-4'
+                                    },
+                                        React.createElement('div', { className: 'flex items-center justify-between mb-2' },
+                                            React.createElement('div', { className: 'flex items-center' },
+                                                React.createElement(role.icon, {
+                                                    className: 'w-6 h-6 mr-3',
+                                                    style: { color: role.color }
+                                                }),
+                                                React.createElement('div', null,
+                                                    React.createElement('p', { className: 'text-white font-bold' }, role.name),
+                                                    React.createElement('p', { className: 'text-purple-300 text-sm' }, role.description)
+                                                )
+                                            ),
+                                            React.createElement('div', { className: 'flex items-center space-x-2' },
+                                                React.createElement('button', {
+                                                    onClick: () => setRoleConfig({
+                                                        ...roleConfig,
+                                                        [role.id]: Math.max(0, roleConfig[role.id] - 1)
+                                                    }),
+                                                    className: 'bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-lg font-bold'
+                                                }, '-'),
+                                                React.createElement('span', { className: 'text-white font-bold w-8 text-center' }, roleConfig[role.id]),
+                                                React.createElement('button', {
+                                                    onClick: () => setRoleConfig({
+                                                        ...roleConfig,
+                                                        [role.id]: roleConfig[role.id] + 1
+                                                    }),
+                                                    className: 'bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-lg font-bold'
+                                                }, '+')
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            error && React.createElement('div', { className: 'bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-xl flex items-center mb-4' },
+                                React.createElement(AlertCircle, { className: 'w-5 h-5 mr-2' }),
+                                error
+                            ),
+                            React.createElement('button', {
+                                onClick: startGameSetup,
+                                disabled: players.length < 4,
+                                className: 'w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold hover:from-red-500 hover:to-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+                            }, players.length < 4 ? `En attente de joueurs (${players.length}/4)` : 'Lancer la Partie')
+                        )
+                    )
                 );
             }
 
+            // ÉCRAN SETUP
+            if (screen === 'setup') {
+                return React.createElement('div', { className: 'min-h-screen flex items-center justify-center p-4 relative z-10' },
+                    React.createElement('div', { className: 'max-w-md w-full' },
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-8 rounded-3xl border border-purple-500/30 text-center' },
+                            React.createElement(Moon, { className: 'w-20 h-20 text-red-500 mx-auto mb-6 pulse-glow' }),
+                            React.createElement('h2', { className: 'text-3xl font-bold text-white mb-4 cinzel' }, 'Prêt à Commencer ?'),
+                            React.createElement('p', { className: 'text-purple-300 mb-8' },
+                                'Les rôles vont être distribués secrètement. Vous recevrez votre carte en début de partie.'
+                            ),
+                            React.createElement('button', {
+                                onClick: startGame,
+                                className: 'w-full bg-gradient-to-r from-red-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-red-500 hover:to-purple-500 transition-all transform hover:scale-105'
+                            }, 'Distribuer les Cartes')
+                        )
+                    )
+                );
+            }
+
+            // ÉCRAN DE JEU
             if (screen === 'game' && gameState) {
                 const currentPlayer = gameState.players.find(p => p.name === playerName);
                 const alivePlayers = gameState.players.filter(p => p.isAlive);
                 const myRole = roles.find(r => r.id === currentPlayer?.role);
-                const isNight = gameState.phase === 'night';
-                const bgClass = isNight || gameState.phase === 'sleep' ? 'night-bg' : 'day-bg';
-                const textColor = isNight || gameState.phase === 'sleep' ? 'text-white' : 'text-gray-900';
 
-                let victimId = null;
-                if (currentPlayer?.role === 'sorciere' && isNight && gameState.nightActions?.loupVotes) {
-                    const votes = Object.values(gameState.nightActions.loupVotes);
-                    const voteCounts = {};
-                    votes.forEach(id => voteCounts[id] = (voteCounts[id] || 0) + 1);
-                    const maxVotes = Math.max(...Object.values(voteCounts));
-                    const candidates = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
-                    victimId = candidates[0];
-                }
+                return React.createElement('div', { className: 'min-h-screen p-4 relative z-10' },
+                    React.createElement('div', { className: 'max-w-6xl mx-auto py-8' },
+                        // Header
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('div', { className: 'flex justify-between items-center' },
+                                React.createElement('div', { className: 'flex items-center space-x-6' },
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: 'text-purple-300 text-sm' }, 'Tour'),
+                                        React.createElement('p', { className: 'text-3xl font-bold text-white' }, gameState.round)
+                                    ),
+                                    React.createElement('div', { className: 'h-12 w-px bg-white/20' }),
+                                    React.createElement('div', null,
+                                        React.createElement('p', { className: 'text-purple-300 text-sm' }, 'Phase'),
+                                        React.createElement('div', { className: 'flex items-center' },
+                                            gameState.phase === 'night' ? [
+                                                React.createElement(Moon, { key: 'icon', className: 'w-6 h-6 text-blue-400 mr-2' }),
+                                                React.createElement('p', { key: 'text', className: 'text-xl font-bold text-white' }, 'Nuit')
+                                            ] : gameState.phase === 'discussion' ? [
+                                                React.createElement(Sun, { key: 'icon', className: 'w-6 h-6 text-yellow-400 mr-2' }),
+                                                React.createElement('p', { key: 'text', className: 'text-xl font-bold text-white' },
+                                                    `Discussion (${Math.floor(discussionTime / 60)}:${(discussionTime % 60).toString().padStart(2, '0')})`
+                                                )
+                                            ] : [
+                                                React.createElement(Shield, { key: 'icon', className: 'w-6 h-6 text-green-400 mr-2' }),
+                                                React.createElement('p', { key: 'text', className: 'text-xl font-bold text-white' }, 'Vote')
+                                            ]
+                                        )
+                                    )
+                                ),
+                                React.createElement('button', {
+                                    onClick: leaveRoom,
+                                    className: 'text-red-400 hover:text-red-300 transition-colors'
+                                }, React.createElement(LogOut, { className: 'w-6 h-6' }))
+                            )
+                        ),
 
-                return (
-                    <div className={`min-h-screen p-4 relative z-10 ${bgClass}`}>
-                        <div className="max-w-6xl mx-auto py-8">
-                            <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20 mb-6">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-6">
-                                        <div>
-                                            <p className="text-purple-300 text-sm">Tour</p>
-                                            <p className={`text-3xl font-bold ${textColor}`}>{gameState.round}</p>
-                                        </div>
-                                        <div className="h-12 w-px bg-white/20"></div>
-                                        <div>
-                                            <p className="text-purple-300 text-sm">Phase</p>
-                                            <div className="flex items-center">
-                                                {isNight ? <><Moon className="w-6 h-6 text-blue-400 mr-2" /><p className={`text-xl font-bold ${textColor}`}>Nuit - {nightTimer}s</p></> :
-                                                    gameState.phase === 'vote' ? <><Sun className="w-6 h-6 text-yellow-600 mr-2" /><p className="text-xl font-bold text-gray-900">Vote - {voteTimer}s</p></> :
-                                                        gameState.phase === 'day' ? <><Sun className="w-6 h-6 text-yellow-600 mr-2" /><p className="text-xl font-bold text-gray-900">Jour</p></> :
-                                                            <><Moon className="w-6 h-6 text-blue-400 mr-2" /><p className={`text-xl font-bold ${textColor}`}>Transition</p></>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button onClick={leaveRoom} className="text-red-400 hover:text-red-300"><LogOut className="w-6 h-6" /></button>
-                                </div>
-                            </div>
+                        // Carte du joueur
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('p', { className: 'text-purple-300 text-sm mb-2' }, 'Votre rôle'),
+                            React.createElement('div', { className: 'flex items-center' },
+                                myRole && React.createElement(myRole.icon, {
+                                    className: 'w-8 h-8 mr-3',
+                                    style: { color: myRole.color }
+                                }),
+                                React.createElement('div', null,
+                                    React.createElement('p', { className: 'text-2xl font-bold text-white' }, myRole?.name),
+                                    React.createElement('p', { className: 'text-purple-300 text-sm' }, myRole?.description)
+                                )
+                            ),
+                            !currentPlayer?.isAlive && React.createElement('div', { className: 'mt-4 bg-red-500/20 border border-red-500 text-red-300 px-4 py-2 rounded-xl flex items-center' },
+                                React.createElement(Skull, { className: 'w-5 h-5 mr-2' }),
+                                'Vous êtes mort'
+                            )
+                        ),
 
-                            {gameState.dayMessage && (
-                                <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20 mb-6 text-center">
-                                    <p className={`text-2xl font-bold ${textColor}`}>{gameState.dayMessage}</p>
-                                </div>
-                            )}
+                        // Actions de nuit
+                        gameState.phase === 'night' && currentPlayer?.isAlive && React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('h3', { className: 'text-xl font-bold text-white mb-4' },
+                                gameState.nightAction === 'loups' ? 'Les Loups-Garous choisissent leur victime' :
+                                    gameState.nightAction === 'voyante' ? 'La Voyante regarde un joueur' :
+                                        gameState.nightAction === 'sorciere' ? 'La Sorcière peut utiliser ses potions' :
+                                            'Le Prêtre protège un joueur'
+                            ),
+                            ((gameState.nightAction === 'loups' && currentPlayer.role === 'loupGarou') ||
+                                (gameState.nightAction === 'voyante' && currentPlayer.role === 'voyante') ||
+                                (gameState.nightAction === 'pretre' && currentPlayer.role === 'pretre')) &&
+                            React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                                alivePlayers
+                                    .filter(p => gameState.nightAction === 'loups' ? p.role !== 'loupGarou' : p.id !== currentPlayer.id)
+                                    .map(player =>
+                                        React.createElement('button', {
+                                            key: player.id,
+                                            onClick: () => performNightAction(player.id),
+                                            className: 'bg-red-600/20 hover:bg-red-600/30 border border-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all'
+                                        }, player.name)
+                                    )
+                            ),
+                            isHost && React.createElement('button', {
+                                onClick: advanceNightPhase,
+                                className: 'w-full mt-4 bg-purple-600 hover:bg-purple-500 text-white py-3 px-6 rounded-xl font-bold transition-colors'
+                            }, 'Phase Suivante')
+                        ),
 
-                            <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20 mb-6">
-                                <p className="text-purple-300 text-sm mb-2">Votre rôle</p>
-                                <div className="flex items-center">
-                                    {myRole && <myRole.icon className="w-8 h-8 mr-3" style={{ color: myRole.color }} />}
-                                    <div>
-                                        <p className={`text-2xl font-bold ${textColor}`}>{myRole?.name}</p>
-                                        <p className="text-purple-300 text-sm">{myRole?.description}</p>
-                                    </div>
-                                </div>
-                                {!currentPlayer?.isAlive && <div className="mt-4 bg-red-500/20 border border-red-500 text-red-300 px-4 py-2 rounded-xl flex items-center"><Skull className="w-5 h-5 mr-2" />Vous êtes mort - Vous ne pouvez plus jouer</div>}
-                            </div>
+                        // Discussion
+                        gameState.phase === 'discussion' && React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('h3', { className: 'text-xl font-bold text-white mb-4' }, 'Phase de Discussion'),
+                            React.createElement('p', { className: 'text-purple-300 mb-4' }, 'Discutez entre vous pour trouver les Loups-Garous !'),
+                            isHost && React.createElement('button', {
+                                onClick: startVoting,
+                                className: 'w-full bg-green-600 hover:bg-green-500 text-white py-3 px-6 rounded-xl font-bold transition-colors'
+                            }, 'Passer au Vote')
+                        ),
 
-                            {isNight && currentPlayer?.isAlive && (
-                                <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20 mb-6">
-                                    <h3 className="text-xl font-bold text-white mb-4">
-                                        Actions de nuit - {Math.floor(nightTimer / 60)}:{String(nightTimer % 60).padStart(2, '0')}
-                                    </h3>
+                        // Vote
+                        gameState.phase === 'vote' && currentPlayer?.isAlive && React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30 mb-6' },
+                            React.createElement('h3', { className: 'text-xl font-bold text-white mb-4' }, 'Votez pour éliminer un joueur'),
+                            !currentPlayer.votedFor ? React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                                alivePlayers.filter(p => p.id !== currentPlayer.id).map(player =>
+                                    React.createElement('button', {
+                                        key: player.id,
+                                        onClick: () => vote(player.id),
+                                        className: 'bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500 text-white px-4 py-3 rounded-xl font-medium transition-all'
+                                    }, player.name)
+                                )
+                            ) : React.createElement('div', { className: 'bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl' },
+                                React.createElement(Check, { className: 'w-5 h-5 inline mr-2' }),
+                                'Vous avez voté'
+                            ),
+                            isHost && React.createElement('button', {
+                                onClick: endVoting,
+                                className: 'w-full mt-4 bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-bold transition-colors'
+                            }, 'Terminer le Vote')
+                        ),
 
-                                    {currentPlayer.role === 'loupGarou' && (
-                                        <>
-                                            <p className="text-purple-300 mb-3">🐺 Choisissez votre victime (pas un autre loup)</p>
-                                            {currentPlayer.hasActed ? (
-                                                <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl">
-                                                    <Check className="w-5 h-5 inline mr-2" />Action effectuée
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {gameState.players.filter(p => p.isAlive && p.role !== 'loupGarou' && p.id !== currentPlayer.id).map(player => (
-                                                        <button
-                                                            key={player.id}
-                                                            onClick={() => {
-                                                                console.log('🖱️ CLIC sur bouton loup:', player.name, player.id);
-                                                                nightAction(player.id, 'loup');
-                                                            }}
-                                                            className="bg-red-600/20 hover:bg-red-600/40 border border-red-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                                        >
-                                                            {player.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {currentPlayer.role === 'voyante' && (
-                                        <>
-                                            <p className="text-purple-300 mb-3">🔮 Regardez UNE carte</p>
-                                            {currentPlayer.hasActed ? (
-                                                <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl">
-                                                    <Check className="w-5 h-5 inline mr-2" />Vision utilisée
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id).map(player => (
-                                                        <button
-                                                            key={player.id}
-                                                            onClick={() => {
-                                                                console.log('🖱️ CLIC sur bouton voyante:', player.name, player.id);
-                                                                nightAction(player.id, 'voyante');
-                                                            }}
-                                                            className="bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                                        >
-                                                            {player.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {currentPlayer.role === 'pretre' && (
-                                        <>
-                                            <p className="text-purple-300 mb-3">✝️ Bénissez une personne</p>
-                                            {currentPlayer.hasActed ? (
-                                                <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl">
-                                                    <Check className="w-5 h-5 inline mr-2" />Bénédiction donnée
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id && p.id !== currentPlayer.lastBlessedId).map(player => (
-                                                        <button
-                                                            key={player.id}
-                                                            onClick={() => {
-                                                                console.log('🖱️ CLIC sur bouton prêtre:', player.name, player.id);
-                                                                nightAction(player.id, 'pretre');
-                                                            }}
-                                                            className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                                        >
-                                                            {player.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {currentPlayer.role === 'sorciere' && (
-                                        <>
-                                            {victimId && (() => {
-                                                const victim = gameState.players.find(p => p.id === victimId);
-                                                return victim ? (
-                                                    <div className="bg-red-900/30 border border-red-500 p-4 rounded-xl mb-4">
-                                                        <p className="text-yellow-300 font-bold mb-3">⚠️ Les loups ont tué: {victim.name}</p>
-                                                        {!currentPlayer.sorciereHealUsed && !gameState.nightActions.sorciereHeal ? (
-                                                            <button
-                                                                onClick={() => {
-                                                                    console.log('🖱️ CLIC sur bouton sauver');
-                                                                    sorciereAction('heal');
-                                                                }}
-                                                                className="w-full bg-green-600/20 hover:bg-green-600/40 border border-green-500 text-white px-4 py-3 rounded-xl font-bold mb-2 transition"
-                                                            >
-                                                                💚 Sauver {victim.name} (1x dans la partie)
-                                                            </button>
-                                                        ) : currentPlayer.sorciereHealUsed ? (
-                                                            <div className="bg-gray-500/20 border border-gray-500 text-gray-300 px-4 py-2 rounded-xl mb-2">
-                                                                Potion de vie déjà utilisée
-                                                            </div>
-                                                        ) : (
-                                                            <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-2 rounded-xl mb-2">
-                                                                ✅ Vous avez sauvé {victim.name}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : null;
-                                            })()}
-
-                                            {!currentPlayer.sorciereKillUsed && !gameState.nightActions.sorciereKill && (
-                                                <>
-                                                    <p className="text-purple-300 mb-3">☠️ Empoisonner quelqu'un (1x dans la partie)</p>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        {gameState.players.filter(p => p.isAlive && p.id !== currentPlayer.id).map(player => (
-                                                            <button
-                                                                key={player.id}
-                                                                onClick={() => {
-                                                                    console.log('🖱️ CLIC sur bouton empoisonner:', player.name, player.id);
-                                                                    sorciereAction('kill', player.id);
-                                                                }}
-                                                                className="bg-pink-600/20 hover:bg-pink-600/40 border border-pink-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                                            >
-                                                                {player.name}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            {!currentPlayer.hasActed && (
-                                                <button
-                                                    onClick={() => sorciereAction('pass')}
-                                                    className="w-full bg-gray-600/20 hover:bg-gray-600/40 border border-gray-500 text-white px-4 py-3 rounded-xl font-bold mt-3 transition"
-                                                >
-                                                    Passer mon tour
-                                                </button>
-                                            )}
-
-                                            {currentPlayer.hasActed && (
-                                                <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl mt-3">
-                                                    <Check className="w-5 h-5 inline mr-2" />Action effectuée
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {currentPlayer.role === 'villageois' && (
-                                        <div className="bg-blue-500/20 border border-blue-500 text-blue-300 px-4 py-3 rounded-xl">
-                                            <AlertCircle className="w-5 h-5 inline mr-2" />
-                                            Vous êtes un simple villageois. Attendez le jour pour voter.
-                                        </div>
-                                    )}
-
-                                    {currentPlayer.role === 'chasseur' && (
-                                        <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-xl">
-                                            <Target className="w-5 h-5 inline mr-2" />
-                                            Vous êtes le chasseur. Votre pouvoir s'active si vous mourrez.
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {gameState.phase === 'day' && isHost && (
-                                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-gray-300 mb-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">☀️ Discussion du Village</h3>
-                                    <p className="text-gray-700 mb-4">Discutez entre vous pour identifier les loups-garous !</p>
-                                    <button onClick={startVoting} className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-4 rounded-2xl font-bold hover:from-orange-500 hover:to-red-500 transition">
-                                        Passer au Vote →
-                                    </button>
-                                </div>
-                            )}
-
-                            {gameState.phase === 'vote' && currentPlayer?.isAlive && (
-                                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-gray-300 mb-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">
-                                        🗳️ Vote d'Élimination - {voteTimer}s
-                                    </h3>
-                                    {!currentPlayer.hasVoted ? (
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {alivePlayers.filter(p => p.id !== currentPlayer.id).map(player => (
-                                                <button
-                                                    key={player.id}
-                                                    onClick={() => vote(player.id)}
-                                                    className="bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500 text-gray-900 px-4 py-3 rounded-xl font-bold transition"
-                                                >
-                                                    {player.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="bg-green-500/20 border border-green-500 text-green-700 px-4 py-3 rounded-xl">
-                                            <Check className="w-5 h-5 inline mr-2" />
-                                            Vous avez voté - Attendez la fin du vote
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {gameState.phase === 'tiebreak' && isHost && (
-                                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-gray-300 mb-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">
-                                        👑 Égalité ! Chef du village, départagez !
-                                    </h3>
-                                    <p className="text-gray-700 mb-4">Choisissez qui sera éliminé :</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {gameState.tiedPlayers.map(playerId => {
-                                            const player = gameState.players.find(p => p.id === playerId);
-                                            return (
-                                                <button
-                                                    key={playerId}
-                                                    onClick={() => tiebreakVote(playerId)}
-                                                    className="bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                                >
-                                                    ☠️ {player?.name}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {gameState.phase === 'chasseur' && currentPlayer?.id === gameState.chasseurId && (
-                                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-gray-300 mb-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">🎯 Chasseur - Dernier Tir !</h3>
-                                    <p className="text-red-600 font-bold mb-4">Vous êtes mort ! Choisissez qui emporter avec vous :</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {alivePlayers.map(player => (
-                                            <button
-                                                key={player.id}
-                                                onClick={() => chasseurShoot(player.id)}
-                                                className="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-3 rounded-xl font-bold transition"
-                                            >
-                                                🎯 {player.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20">
-                                <h3 className={`text-xl font-bold ${textColor} mb-4`}>Joueurs</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {gameState.players.map(player => (
-                                        <div key={player.id} className={`border rounded-xl px-4 py-3 ${player.isAlive ? 'bg-white/5 border-white/10' : 'bg-red-500/10 border-red-500/30 opacity-50'}`}>
-                                            <div className="flex items-center justify-between">
-                                                <span className={textColor}>{player.name}</span>
-                                                {!player.isAlive && <Skull className="w-5 h-5 text-red-400" />}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        // Liste des joueurs
+                        React.createElement('div', { className: 'bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-purple-500/30' },
+                            React.createElement('h3', { className: 'text-xl font-bold text-white mb-4' }, 'Joueurs'),
+                            React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                                gameState.players.map(player =>
+                                    React.createElement('div', {
+                                        key: player.id,
+                                        className: `border rounded-xl px-4 py-3 ${player.isAlive ? 'bg-white/5 border-white/10' : 'bg-red-500/10 border-red-500/30 opacity-50'
+                                            }`
+                                    },
+                                        React.createElement('div', { className: 'flex items-center justify-between' },
+                                            React.createElement('span', { className: 'text-white font-medium' }, player.name),
+                                            !player.isAlive && React.createElement(Skull, { className: 'w-5 h-5 text-red-400' })
+                                        ),
+                                        gameState.phase === 'vote' && player.votes > 0 &&
+                                        React.createElement('p', { className: 'text-purple-300 text-sm mt-1' }, `${player.votes} vote(s)`)
+                                    )
+                                )
+                            )
+                        )
+                    )
                 );
             }
 
@@ -1074,12 +925,21 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('app'));
-        root.render(<LoupGarou />);
+        root.render(React.createElement(LoupGarou));
     </script>
 
+    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js').then(r => console.log('✅ SW:', r.scope)).catch(e => console.log('❌ SW:', e));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker enregistré:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Erreur Service Worker:', error);
+                    });
+            });
         }
     </script>
 </body>
