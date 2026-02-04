@@ -135,7 +135,7 @@
             const [gameState, setGameState] = useState(null);
             const [copied, setCopied] = useState(false);
             const [error, setError] = useState('');
-            const [nightTimer, setNightTimer] = useState(60);
+            const [nightTimer, setNightTimer] = useState(120);
             const [voteTimer, setVoteTimer] = useState(30);
             const roomRef = useRef(null);
 
@@ -257,8 +257,8 @@
                 newGameState.phase = 'night';
                 newGameState.nightActions = {};
                 newGameState.dayMessage = 'La nuit tombe...';
-                newGameState.players.forEach(p => { p.hasActed = false; p.hasVoted = false; });
-                setNightTimer(60);
+                newGameState.players.forEach(p => { p.hasActed = false; p.hasVoted = false; p.voyanteSeen = false; });
+                setNightTimer(120);
                 try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
             };
 
@@ -266,7 +266,7 @@
                 if (!db) return;
                 const newGameState = { ...gameState };
                 const currentPlayer = newGameState.players.find(p => p.name === playerName);
-                if (!currentPlayer || !currentPlayer.isAlive || currentPlayer.hasActed) return;
+                if (!currentPlayer || !currentPlayer.isAlive) return;
 
                 if (actionType === 'loup') {
                     if (currentPlayer.role !== 'loupGarou') return;
@@ -274,13 +274,11 @@
                     if (target.role === 'loupGarou') { alert('Vous ne pouvez pas tuer un autre loup !'); return; }
                     if (!newGameState.nightActions.loupVotes) newGameState.nightActions.loupVotes = {};
                     newGameState.nightActions.loupVotes[currentPlayer.id] = targetId;
-                    currentPlayer.hasActed = true;
                 } else if (actionType === 'voyante') {
                     if (currentPlayer.role !== 'voyante' || currentPlayer.voyanteSeen) return;
                     const target = newGameState.players.find(p => p.id === targetId);
                     alert(`${target.name} est ${roles.find(r => r.id === target.role)?.name}`);
                     currentPlayer.voyanteSeen = true;
-                    currentPlayer.hasActed = true;
                 } else if (actionType === 'pretre') {
                     if (currentPlayer.role !== 'pretre') return;
                     if (currentPlayer.lastBlessedId === targetId) {
@@ -289,7 +287,6 @@
                     }
                     newGameState.nightActions.blessed = targetId;
                     currentPlayer.lastBlessedId = targetId;
-                    currentPlayer.hasActed = true;
                 }
 
                 try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
@@ -305,12 +302,10 @@
                     if (currentPlayer.sorciereHealUsed) { alert('Vous avez déjà utilisé votre potion de vie !'); return; }
                     newGameState.nightActions.sorciereHeal = true;
                     currentPlayer.sorciereHealUsed = true;
-                    currentPlayer.hasActed = true;
                 } else if (actionType === 'kill') {
                     if (currentPlayer.sorciereKillUsed) { alert('Vous avez déjà utilisé votre potion de mort !'); return; }
                     newGameState.nightActions.sorciereKill = targetId;
                     currentPlayer.sorciereKillUsed = true;
-                    currentPlayer.hasActed = true;
                 }
 
                 try { await db.ref(`rooms/${roomCode}/gameState`).set(newGameState); } catch (err) { }
@@ -611,9 +606,9 @@
 
                             {isNight && currentPlayer?.isAlive && (
                                 <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/20 mb-6">
-                                    <h3 className="text-xl font-bold text-white mb-4">Actions de nuit (60s)</h3>
+                                    <h3 className="text-xl font-bold text-white mb-4">Actions de nuit ({Math.floor(nightTimer / 60)}:{String(nightTimer % 60).padStart(2, '0')})</h3>
 
-                                    {currentPlayer.role === 'loupGarou' && !currentPlayer.hasActed && (
+                                    {currentPlayer.role === 'loupGarou' && (
                                         <>
                                             <p className="text-purple-300 mb-3">Choisissez votre victime (pas un autre loup)</p>
                                             <div className="grid grid-cols-2 gap-3">
@@ -635,7 +630,7 @@
                                         </>
                                     )}
 
-                                    {currentPlayer.role === 'pretre' && !currentPlayer.hasActed && (
+                                    {currentPlayer.role === 'pretre' && (
                                         <>
                                             <p className="text-purple-300 mb-3">Bénissez une personne (pas la même qu'hier)</p>
                                             <div className="grid grid-cols-2 gap-3">
@@ -666,8 +661,6 @@
                                             </div>
                                         </>
                                     )}
-
-                                    {currentPlayer.hasActed && <div className="bg-green-500/20 border border-green-500 text-green-300 px-4 py-3 rounded-xl"><Check className="w-5 h-5 inline mr-2" />Action effectuée</div>}
                                 </div>
                             )}
 
